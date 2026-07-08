@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Love Lunch</title>
+    <style>
+        :root {
+            --lb-bg-cream: #FDFBF7;    
+            --lb-bg-white: #FFFFFF;    
+            --lb-plum: #3C1B2F;        
+            --lb-pitaya: #F3A3B4;      
+            --lb-orange: #f59e0b;      
+            --lb-text-muted: #7c6875;  
+        }
+
+        * { 
+            box-sizing: border-box; 
+            font-family: '-apple-system', BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            margin: 0; 
+            padding: 0; 
+        }
+
+        body { 
+            background-color: #EFECE6; 
+            color: var(--lb-plum); 
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 20px;
+        }
+
+        /* AZ ALKALMAZÁS FIX DOBOZA: CSS Grid-re átültetve a betonbiztos elrendezésért */
+        .lb-clean-wrapper { 
+            width: 100%; 
+            max-width: 420px; 
+            height: 840px; 
+            position: relative; 
+            background-color: var(--lb-bg-cream);
+            box-shadow: 0 12px 40px rgba(60, 27, 47, 0.2);
+            border-radius: 30px;
+            overflow: hidden; 
+            display: grid;
+            grid-template-rows: 1fr 75px; /* A felső rész rugalmas, az alsó menü fixen 75px */
+        }
+
+        /* GÖRDÍTHETŐ BELSŐ TARTALOMTERÜLET */
+        .lb-scrollable-body {
+            grid-row: 1;
+            overflow-y: auto;
+            position: relative;
+            padding-bottom: 20px;
+        }
+
+        /* Fejléc */
+        .lb-clean-header { 
+            padding: 35px 24px 20px 24px; 
+            position: relative;
+            animation: lbSlideUp 0.5s ease; 
+        }
+        .lb-clean-header h1 { 
+            font-size: 32px; 
+            font-weight: 800; 
+            letter-spacing: -0.5px; 
+            color: var(--lb-plum);
+        }
+        .lb-clean-header p { font-size: 14px; color: var(--lb-text-muted); margin-top: 6px; }
+
+        /* FIX, RÉTEGZETT KOSÁR GOMB - Szuperbiztos kattintás-érzékelés */
+        .lb-cart-trigger {
+            position: absolute; 
+            top: 24px;
+            right: 24px;
+            background: var(--lb-bg-white);
+            border: 2px solid var(--lb-plum);
+            border-radius: 16px;
+            padding: 10px 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 6px 20px rgba(60, 27, 47, 0.25);
+            z-index: 999; /* Mindig legfelül van a görgethető térben */
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+        
+        .lb-cart-trigger.visible {
+            opacity: 1;
+            transform: translateY(0);
+            animation: lbFloatCart 3s ease-in-out infinite alternate; 
+        }
+        
+        .lb-cart-trigger:active { 
+            transform: scale(0.92) !important; 
+        }
+        .lb-cart-icon { font-size: 22px; }
+        .lb-cart-count {
+            background: var(--lb-orange);
+            color: white;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 20px;
+        }
+
+        .lb-clean-content { 
+            padding: 0 24px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 20px; 
+            animation: lbSlideUp 0.6s ease; 
+        }
+
+        .lb-section-title { 
+            font-size: 11px; 
+            text-transform: uppercase; 
+            letter-spacing: 1.5px; 
+            color: var(--lb-text-muted); 
+            font-weight: 700; 
+            margin-bottom: 10px; 
+        }
+
+        .lb-location-box {
+            background: var(--lb-bg-white);
+            border-radius: 16px;
+            padding: 16px;
+            border: 2px solid var(--lb-pitaya); 
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--lb-plum);
+            box-shadow: 0 4px 12px rgba(60, 27, 47, 0.04);
+        }
+
+        /* Oldalpanelek */
+        .lb-page-panel { display: none; animation: lbFadeIn 0.4s ease; }
+        .lb-page-panel.active { display: flex; flex-direction: column; gap: 20px; }
+
+        /* Menü szűrők */
+        .lb-menu-top-container {
+            position: relative;
+            padding-top: 15px;
+        }
+        .lb-filter-bar {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 15px;
+            margin-bottom: 5px;
+        }
+        .lb-filter-btn {
+            background: var(--lb-bg-white);
+            border: 1px solid rgba(60, 27, 47, 0.15);
+            color: var(--lb-plum);
+            padding: 12px 8px;
+            border-radius: 14px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+        .lb-filter-btn.active {
+            background: var(--lb-plum);
+            color: var(--lb-bg-cream);
+            border-color: var(--lb-plum);
+            box-shadow: 0 4px 12px rgba(60, 27, 47, 0.15);
+        }
+
+        .lb-menu-grid { display: flex; flex-direction: column; gap: 16px; margin-bottom: 30px; }
+        .lb-day-row { display: flex; flex-direction: column; gap: 8px; }
+        .lb-day-title { font-size: 13px; font-weight: 800; color: var(--lb-plum); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 6px; }
+        .lb-cards-container { display: flex; gap: 10px; width: 100%; }
+
+        /* Ételkártyák */
+        .lb-food-card { 
+            background: var(--lb-bg-white); 
+            border-radius: 20px; 
+            padding: 16px; 
+            border: 1px solid rgba(60, 27, 47, 0.06); 
+            display: flex; 
+            flex-direction: column; 
+            gap: 10px; 
+            box-shadow: 0 4px 16px rgba(60, 27, 47, 0.03);
+            width: 100%;
+        }
+        .lb-food-card.small-card { width: calc(50% - 5px); padding: 12px; gap: 8px; }
+        .lb-tag-row { display: flex; flex-wrap: wrap; gap: 4px; }
+        
+        .lb-day-row .lb-meal-tag { 
+            background-color: var(--lb-pitaya); 
+            color: var(--lb-plum); 
+            font-size: 9px; 
+            padding: 4px 8px; 
+            border-radius: 100px; 
+            font-weight: 700; 
+        }
+        .lb-day-row .lb-meal-tag.blue { color: #0369a1; background-color: #e0f2fe; }
+        .lb-day-row .lb-meal-tag.purple { color: #6b21a8; background-color: #f3e8ff; }
+        .lb-day-row .lb-meal-tag.green { color: #15803d; background-color: #dcfce7; }
+
+        .lb-meal-title { font-size: 15px; font-weight: 700; line-height: 1.35; color: var(--lb-plum); }
+        .lb-food-card.small-card .lb-meal-title { font-size: 12px; min-height: 64px; } 
+        
+        .lb-meal-stats { display: flex; gap: 10px; font-size: 11px; color: var(--lb-text-muted); font-weight: 600; }
+        .lb-food-card.small-card .lb-meal-stats { flex-direction: column; gap: 2px; }
+
+        .lb-price-row { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-top: 2px; 
+            padding-top: 10px; 
+            border-top: 1px solid rgba(60, 27, 47, 0.06); 
+            gap: 6px;
+        }
+        .lb-price { font-size: 16px; font-weight: 800; color: var(--lb-plum); }
+        .lb-food-card.small-card .lb-price { font-size: 14px; }
+
+        .lb-action-inline-group {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            width: 100%;
+            justify-content: flex-end;
+        }
+        .lb-food-card.small-card .lb-price-row { flex-direction: column; align-items: flex-start; }
+        .lb-food-card.small-card .lb-action-inline-group { flex-direction: column; width: 100%; gap: 6px; }
+
+        .lb-location-select {
+            background: #fdfbf7;
+            border: 1px solid rgba(60, 27, 47, 0.2);
+            padding: 6px 4px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--lb-plum);
+            outline: none;
+            max-width: 110px;
+            cursor: pointer;
+        }
+        .lb-food-card.small-card .lb-location-select { max-width: 100%; width: 100%; font-size: 10px; padding: 5px 2px; }
+
+        .lb-order-btn {
+            background: transparent;
+            border: 1.5px solid var(--lb-plum);
+            color: var(--lb-plum);
+            padding: 6px 12px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .lb-food-card.small-card .lb-order-btn { width: 100%; padding: 5px; text-align: center; }
+        .lb-order-btn.active {
+            background: #e11d48;
+            color: white;
+            border-color: #e11d48;
+        }
+
+        .lb-status-dot { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+        .lb-status-dot::before { content: ''; width: 8px; height: 8px; background-color: var(--lb-pitaya); border-radius: 50%; }
+        
+        .lb-action-btn { 
+            background: var(--lb-plum); color: var(--lb-bg-cream); border: none; border-radius: 24px; 
+            padding: 20px; font-size: 17px; font-weight: 700; cursor: pointer; width: 100%;
+            display: flex; flex-direction: column; align-items: center; gap: 4px; box-shadow: 0 10px 25px rgba(60, 27, 47, 0.2);
+        }
+
+        /* OVERLAY FIZETÉSI ÉS KOSÁR REPREZENTÁCIÓK */
+        .lb-side-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--lb-bg-cream);
+            z-index: 9999; /* Magasabb, mint az összes többi belső elem, hogy teljesen befedje az appot */
+            display: none;
+            flex-direction: column;
+            padding: 30px 24px;
+            animation: lbSlideLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .lb-side-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .lb-side-header h2 { font-size: 24px; font-weight: 800; }
+        .lb-back-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--lb-plum); }
+
+        .lb-cart-items-list { flex: 1; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+        .lb-cart-item-node {
+            background: var(--lb-bg-white);
+            padding: 14px;
+            border-radius: 16px;
+            border: 1px solid rgba(60, 27, 47, 0.06);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .lb-cart-item-node .title { font-size: 14px; font-weight: 700; }
+        .lb-cart-item-node .meta { font-size: 11px; color: var(--lb-text-muted); font-weight: 600; }
+
+        .lb-checkout-footer { padding-top: 16px; border-top: 2px dashed rgba(60, 27, 47, 0.1); margin-top: 20px; }
+        .lb-total-row { display: flex; justify-content: space-between; font-size: 18px; font-weight: 800; margin-bottom: 16px; }
+        
+        .lb-primary-btn {
+            background: var(--lb-plum); color: var(--lb-bg-cream); border: none; width: 100%;
+            padding: 16px; border-radius: 16px; font-size: 16px; font-weight: 700; cursor: pointer; text-align: center;
+        }
+
+        /* Kompakt BÉTA felület */
+        .lb-beta-checkout-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-top: 5px;
+        }
+        .lb-beta-badge {
+            background: #fff1f2; border: 2px dashed #e11d48; color: #9f1239;
+            padding: 20px; border-radius: 20px; text-align: center;
+        }
+        .lb-beta-title { font-size: 24px; font-weight: 900; letter-spacing: 0.5px; color: #e11d48; margin-bottom: 6px; }
+        .lb-beta-text { font-size: 13px; font-weight: 600; line-height: 1.4; }
+        .lb-beta-summary-card {
+            background: white; padding: 20px; border-radius: 16px; 
+            border: 1px dashed rgba(60,27,47,0.2);
+        }
+
+        /* Automatanyitás popups */
+        .lb-overlay { 
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(60, 27, 47, 0.85); z-index: 10000; justify-content: center; align-items: center; padding: 24px; 
+        }
+        .lb-popup { 
+            background: var(--lb-bg-cream); border-radius: 32px; padding: 36px 24px; width: 100%; text-align: center;
+            display: flex; flex-direction: column; align-items: center; gap: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            animation: lbBubble 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .lb-spinner { width: 50px; height: 50px; border: 4px solid rgba(60, 27, 47, 0.1); border-top-color: var(--lb-plum); border-radius: 50%; animation: lbSpin 0.8s linear infinite; }
+        .lb-fire { font-size: 50px; display: none; animation: lbPulseFire 1s infinite alternate; }
+        .lb-waves { display: none; position: relative; width: 60px; height: 50px; }
+        .lb-wave { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; border: 3px solid var(--lb-orange); border-radius: 50%; transform: translate(-50%, -50%); opacity: 0; animation: lbHeat 1.5s infinite linear; }
+        .lb-wave:nth-child(2) { animation-delay: 0.5s; }
+        .lb-success { font-size: 48px; display: none; }
+        .lb-pop-title { font-size: 20px; font-weight: 800; color: var(--lb-plum); }
+        .lb-pop-text { font-size: 14px; color: var(--lb-text-muted); line-height: 1.5; font-weight: 500; }
+        .lb-choices { display: none; flex-direction: column; gap: 10px; width: 100%; }
+        .lb-btn-heat { background: var(--lb-orange); color: #451a03; border: none; padding: 14px; border-radius: 16px; font-weight: 700; font-size: 15px; cursor: pointer; }
+        .lb-btn-cold { background: rgba(60, 27, 47, 0.05); color: var(--lb-plum); border: none; padding: 14px; border-radius: 16px; font-weight: 700; font-size: 15px; cursor: pointer; }
+        .lb-close-btn { display: none; background: var(--lb-plum); color: var(--lb-bg-cream); border: none; padding: 14px 32px; border-radius: 16px; font-size: 15px; font-weight: 700; cursor: pointer; width: 100%; }
+
+        /* KÜLÖNVÁLASZTOTT, FIXÁLT ALSÓ MENÜSOR - A Grid miatt soha nem fog elmozdulni */
+        .lb-nav { 
+            grid-row: 2;
+            width: 100%;
+            background-color: var(--lb-plum); 
+            border-top: 1px solid rgba(255,255,255,0.05); 
+            display: flex; 
+            justify-content: space-around; 
+            align-items: center; 
+            padding-bottom: 10px; 
+            z-index: 50; /* Biztosítja, hogy mindig a tartalom felett üljön */
+        }
+        .lb-nav-item { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 11px; color: #a38c9a; font-weight: 600; cursor: pointer; }
+        .lb-nav-item.active { color: var(--lb-pitaya); } 
+        .lb-nav-item svg { width: 22px; height: 22px; fill: currentColor; }
+
+        .lb-profile-card { background: white; padding: 20px; border-radius: 20px; border: 1px solid rgba(60, 27, 47, 0.06); display: flex; flex-direction: column; gap: 12px; }
+        .lb-profile-info { display: flex; justify-content: space-between; font-size: 14px; font-weight: 600; }
+
+        @keyframes lbSpin { to { transform: rotate(360deg); } }
+        @keyframes lbSlideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes lbSlideLeft { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        @keyframes lbFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes lbBubble { 0% { transform: scale(0.85); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes lbPulseFire { from { transform: scale(0.9); opacity: 0.8; } to { transform: scale(1.1); opacity: 1; } }
+        @keyframes lbHeat { 0% { width: 10px; height: 10px; opacity: 1; } 100% { width: 70px; height: 55px; opacity: 0; transform: translate(-50%, -50%); } }
+        @keyframes lbFloatCart { 0% { transform: translateY(0px); } 100% { transform: translateY(-6px); } }
+    </style>
+</head>
+<body>
+
+<div class="lb-clean-wrapper">
+    
+    <div class="lb-cart-trigger" id="lbCartTriggerBtn" onclick="openCartView()">
+        <span class="lb-cart-icon">🧺</span>
+        <span class="lb-cart-count" id="lbGlobalCartCount">0</span>
+    </div>
+
+    <div class="lb-scrollable-body" id="lbScrollBody">
+        
+        <div class="lb-clean-header" id="lbMainHeader">
+            <h1>Love Lunch</h1>
+            <p id="lbSubtitle">Egészséges étel. Gyorsan, bármikor.</p>
+        </div>
+        
+        <div class="lb-clean-content">
+
+            <div id="lbHome" class="lb-page-panel active">
+                <div>
+                    <div class="lb-section-title">Automata Kijelölt Helyszíne</div>
+                    <div class="lb-location-box">
+                        <span>📍</span>
+                        <span id="lbHomeLocationText">Corvin Campus - Aula</span>
+                    </div>
+                </div>
+                
+                <div>
+                    <div class="lb-section-title" id="lbMainMealSectionTitle">Mai Ételed</div>
+                    <div class="lb-food-card" id="lbMainDisplayCard">
+                        <div class="lb-tag-row">
+                            <div class="lb-meal-tag">MAGAS FEHÉRJE</div>
+                            <div class="lb-meal-tag">FITNESZ</div>
+                        </div>
+                        <div class="lb-meal-title" style="font-weight:700;" id="lbHomeMealTitle">Mézes-mustáros csirkemell, sült édesburgonya reszelt gouda sajttal</div>
+                        <div class="lb-meal-stats">
+                            <span>🔥 540 kcal</span>
+                            <span>💪 48g Fehérje</span>
+                        </div>
+                        <div class="price-row">
+                            <span class="lb-price" id="lbHomeMealPrice">2 390 Ft</span>
+                            <span class="lb-status-dot" id="lbHomeCompartment">24-es rekesz</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <div class="lb-section-title">Az automatánál állsz?</div>
+                    <button class="lb-action-btn" id="lbBtnAction">
+                        <span>Rekesz Feloldása</span>
+                        <span class="sub">Érintsd a terminálhoz a telefont</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="lbMenu" class="lb-page-panel">
+                <div class="lb-menu-top-container">
+                    <div class="lb-filter-bar">
+                        <button class="lb-filter-btn active" onclick="switchMenuCategory('sima')">Sima (Egészséges)</button>
+                        <button class="lb-filter-btn" onclick="switchMenuCategory('mentes')">Mentes (G,L,D)</button>
+                        <button class="lb-filter-btn" onclick="switchMenuCategory('protein')">Proteines</button>
+                        <button class="lb-filter-btn" onclick="switchMenuCategory('kaloria')">Kalóriaszegény</button>
+                    </div>
+                </div>
+
+                <div class="lb-menu-grid" id="lbMenuGridContainer">
+                    </div>
+            </div>
+
+            <div id="lbProfile" class="lb-page-panel">
+                <div class="lb-section-title">Fiókod Állapota</div>
+                <div class="lb-profile-card">
+                    <div class="lb-profile-info">
+                        <span>Név:</span>
+                        <span>Kovács Bence (Diák)</span>
+                    </div>
+                    <div class="lb-profile-info">
+                        <span>Aktív előfizetés:</span>
+                        <span style="color: #059669; font-weight:800;">Heti 5 napos irodai</span>
+                    </div>
+                    <div class="lb-profile-info">
+                        <span>Egyenleg:</span>
+                        <span>14 500 Ft</span>
+                    </div>
+                    <div class="lb-profile-info">
+                        <span>Mentett pont:</span>
+                        <span>Corvin Campus Aula</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="lb-side-overlay" id="lbCartSidePanel">
+        <div class="lb-side-header">
+            <button class="lb-back-btn" onclick="closeCartView()">←</button>
+            <h2>Kosarad 🧺</h2>
+            <span></span>
+        </div>
+        <div class="lb-cart-items-list" id="lbCartItemsContainer"></div>
+        <div class="lb-checkout-footer">
+            <div class="lb-total-row">
+                <span>Összesen:</span>
+                <span id="lbCartTotalSumText">0 Ft</span>
+            </div>
+            <button class="lb-primary-btn" onclick="goToBetaCheckout()">Tovább a fizetéshez</button>
+        </div>
+    </div>
+
+    <div class="lb-side-overlay" id="lbBetaCheckoutPanel">
+        <div class="lb-side-header">
+            <button class="lb-back-btn" onclick="backToCartFromBeta()">←</button>
+            <h2>Biztonságos Fizetés</h2>
+            <span></span>
+        </div>
+        
+        <div class="lb-beta-checkout-container">
+            <div class="lb-beta-badge">
+                <div class="lb-beta-title">BÉTA VERZIÓ</div>
+                <p class="lb-beta-text">Ez a felület még egy tesztkörnyezet. Valódi bankkártyás tranzakció nem történik.</p>
+            </div>
+
+            <div class="lb-beta-summary-card">
+                <div style="display:flex; justify-content:space-between; font-weight:700; font-size:16px; margin-bottom:4px;">
+                    <span>Fizetendő összeg:</span>
+                    <span id="lbBetaFinalAmountText">0 Ft</span>
+                </div>
+                <p style="font-size:11px; color: var(--lb-text-muted);">A gomb megnyomásával a rendelésed azonnal feldolgozásra kerül.</p>
+            </div>
+
+            <button class="lb-primary-btn" style="background:#e11d48; margin-top: 10px;" onclick="executeBetaPaymentAndOrder()">Fizetés & rendelés</button>
+        </div>
+    </div>
+
+    <div class="lb-overlay" id="lbOverlayView">
+        <div class="lb-popup">
+            <div class="lb-spinner" id="lbPopSpinner"></div>
+            <div class="lb-fire" id="lbPopFire">🔥</div>
+            <div class="lb-waves" id="lbPopWaves"><div class="lb-wave"></div><div class="lb-wave"></div></div>
+            <div class="lb-success" id="lbPopSuccess">🔓</div>
+            <div class="lb-pop-title" id="lbPopTitle">Kapcsolódás...</div>
+            <div class="lb-pop-text" id="lbPopText">Biztonságos kapcsolat létesítése a 24-es rekesszel.</div>
+            <div class="lb-choices" id="lbPopChoices">
+                <button class="lb-btn-heat" id="lbHeatYes">Igen, melegítést kérek 🔥</button>
+                <button class="lb-btn-cold" id="lbHeatNo">Nem, köszönöm</button>
+            </div>
+            <button class="lb-close-btn" id="lbPopClose">Kész</button>
+        </div>
+    </div>
+    
+    <div class="lb-nav">
+        <div class="lb-nav-item active" id="lbTabHome">
+            <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+            Főoldal
+        </div>
+        <div class="lb-nav-item" id="lbTabMenu">
+            <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
+            Menü
+        </div>
+        <div class="lb-nav-item" id="lbTabProfile">
+            <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            Profil
+        </div>
+    </div>
+</div>
+
+<script>
+    let basket = [];
+    let latestOrder = null;
+    let isCartForceHidden = false;
+
+    const lbScrollBody = document.getElementById('lbScrollBody');
+    const lbCartTriggerBtn = document.getElementById('lbCartTriggerBtn');
+    
+    const lbTabHome = document.getElementById('lbTabHome');
+    const lbTabMenu = document.getElementById('lbTabMenu');
+    const lbTabProfile = document.getElementById('lbTabProfile');
+    const lbHome = document.getElementById('lbHome');
+    const lbMenu = document.getElementById('lbMenu');
+    const lbProfile = document.getElementById('lbProfile');
+    const lbMainHeader = document.getElementById('lbMainHeader');
+    const lbSubtitle = document.getElementById('lbSubtitle');
+
+    // SCROLL FIGYELÉS - Stabil láthatóság és kattinthatóságkezelés
+    lbScrollBody.addEventListener('scroll', () => {
+        if (isCartForceHidden) {
+            lbCartTriggerBtn.classList.remove('visible');
+            return;
+        }
+        if (lbScrollBody.scrollTop > 30) {
+            lbCartTriggerBtn.classList.add('visible');
+        } else {
+            lbCartTriggerBtn.classList.remove('visible');
+        }
+    });
+
+    lbTabHome.addEventListener('click', () => { 
+        lbMainHeader.style.display = 'block';
+        isCartForceHidden = false;
+        if(lbScrollBody.scrollTop > 30) lbCartTriggerBtn.classList.add('visible');
+        setLbTab(lbTabHome, lbHome, "Egészséges étel. Gyorsan, bármikor."); 
+    });
+    
+    lbTabMenu.addEventListener('click', () => { 
+        lbMainHeader.style.display = 'none'; 
+        isCartForceHidden = false;
+        if(lbScrollBody.scrollTop > 30) lbCartTriggerBtn.classList.add('visible');
+        setLbTab(lbTabMenu, lbMenu, ""); 
+        switchMenuCategory('sima'); 
+    });
+    
+    lbTabProfile.addEventListener('click', () => { 
+        lbMainHeader.style.display = 'block';
+        isCartForceHidden = true;
+        lbCartTriggerBtn.classList.remove('visible');
+        setLbTab(lbTabProfile, lbProfile, "Kezeld az adataidat és egyenleged."); 
+    });
+
+    function setLbTab(activeBtn, activePage, subtitleText) {
+        [lbTabHome, lbTabMenu, lbTabProfile].forEach(btn => btn.classList.remove('active'));
+        [lbHome, lbMenu, lbProfile].forEach(page => page.classList.remove('active'));
+        activeBtn.classList.add('active');
+        activePage.classList.add('active');
+        if(subtitleText) lbSubtitle.innerText = subtitleText;
+    }
+
+    // --- MENÜ ADATOK (Hétfőtől Vasárnapig) ---
+    const fixSima2 = { title: "Rozmaringos csirkecomb bulgurral és párolt zöldborsóval", kcal: "510 kcal", price: 2390 };
+
+    const menuData = {
+        sima: [
+            { id: "s1_he", day: "Hétfő", title1: "Mézes-mustáros csirkemell édesburgonyával", kcal1: "540 kcal", price: 2390 },
+            { id: "s1_ke", day: "Kedd", title1: "Marhahúsos teljes kiőrlésű burritotál", kcal1: "590 kcal", price: 2390 },
+            { id: "s1_sze", day: "Szerda", title1: "Zöldfűszeres pulykatokány barna rizzsel", kcal1: "490 kcal", price: 2390 },
+            { id: "s1_csu", day: "Csütörtök", title1: "Sajttal töltött pulykamell zöldségkörettel", kcal1: "520 kcal", price: 2390 },
+            { id: "s1_pe", day: "Péntek", title1: "Bolognai teljes kiőrlésű spagetti marhából", kcal1: "560 kcal", price: 2390 },
+            { id: "s1_szo", day: "Szombat", title1: "Gombás csirkeragu jázmin rizzsel", kcal1: "480 kcal", price: 2390 },
+            { id: "s1_va", day: "Vasárnap", title1: "Omlós sertésszűz fokhagymás quinoával", kcal1: "530 kcal", price: 2390 }
+        ],
+        mentes: [
+            { id: "me_he", day: "Hétfő", title: "Zöldséges csicseriborsó curry basmati rizzsel", tag: "MENTES (G,L,D)", kcal: "460 kcal", typeColor: "purple", price: 2690 },
+            { id: "me_ke", day: "Kedd", title: "Sült tőkehalfilé selymes zöldségpürével", tag: "MENTES (G,L,D)", kcal: "410 kcal", typeColor: "purple", price: 2690 },
+            { id: "me_sze", day: "Szerda", title: "Kakukkfüves pulykamellcsíkok quinoával", tag: "MENTES (G,L,D)", kcal: "440 kcal", typeColor: "purple", price: 2690 },
+            { id: "me_csu", day: "Csütörtök", title: "Zöldséges lencseragu gőzölt barna rizzsel", tag: "MENTES (G,L,D)", kcal: "480 kcal", typeColor: "purple", price: 2690 },
+            { id: "me_pe", day: "Péntek", title: "Lazac steak citromos párolt zöldségágyon", tag: "MENTES (G,L,D)", kcal: "510 kcal", typeColor: "purple", price: 2690 },
+            { id: "me_szo", day: "Szombat", title: "Illatos kókusztejes csirke konjac tésztával", tag: "MENTES (G,L,D)", kcal: "430 kcal", typeColor: "purple", price: 2690 },
+            { id: "me_va", day: "Vasárnap", title: "Zöldfűszeres tengeri süllő édesburgonyával", tag: "MENTES (G,L,D)", kcal: "460 kcal", typeColor: "purple", price: 2690 }
+        ],
+        protein: [
+            { id: "pr_he", day: "Hétfő", title: "Dupla grill csirkemell jázmin rizzsel", tag: "💪 PROTEINES", kcal: "620 kcal", typeColor: "green", price: 2690 },
+            { id: "pr_ke", day: "Kedd", title: "Bélszíncsíkok omlettel és quinoával", tag: "💪 PROTEINES", kcal: "640 kcal", typeColor: "green", price: 2690 },
+            { id: "pr_sze", day: "Szerda", title: "Lazac steak cottage cheese-zel", tag: "💪 PROTEINES", kcal: "580 kcal", typeColor: "green", price: 2690 },
+            { id: "pr_csu", day: "Csütörtök", title: "Mustáros hátszín párolt zöldborsóval és rizzsel", tag: "💪 PROTEINES", kcal: "610 kcal", typeColor: "green", price: 2690 },
+            { id: "pr_pe", day: "Péntek", title: "Pulyka-húsgolyók fehérjedús lencseágyon", tag: "💪 PROTEINES", kcal: "590 kcal", typeColor: "green", price: 2690 },
+            { id: "pr_szo", day: "Szombat", title: "Sült csirkecomb filé dupla adag bulgurral", tag: "💪 PROTEINES", kcal: "630 kcal", typeColor: "green", price: 2690 },
+            { id: "pr_va", day: "Vasárnap", title: "Grillezett tonhal steak tojásos rizzsel", tag: "💪 PROTEINES", kcal: "600 kcal", typeColor: "green", price: 2690 }
+        ],
+        kaloria: [
+            { id: "ka_he", day: "Hétfő", title: "Citromos lepényhal friss kevert salátával", tag: "📉 KALÓRIASZEGÉNY", kcal: "340 kcal", typeColor: "blue", price: 2690 },
+            { id: "ka_ke", day: "Kedd", title: "Zöldséges csirkeragu konjac tésztával", tag: "📉 KALÓRIASZEGÉNY", kcal: "310 kcal", typeColor: "blue", price: 2690 },
+            { id: "ka_sze", day: "Szerda", title: "Zsályás pulykamell gőzölt zöldségágyon", tag: "📉 KALÓRIASZEGÉNY", kcal: "330 kcal", typeColor: "blue", price: 2690 },
+            { id: "ka_csu", day: "Csütörtök", title: "Tőkehal ropogós zellerszalmával", tag: "📉 KALÓRIASZEGÉNY", kcal: "320 kcal", typeColor: "blue", price: 2690 },
+            { id: "ka_pe", day: "Péntek", title: "Fűszeres garnélarák kapros uborkasalátával", tag: "📉 KALÓRIASZEGÉNY", kcal: "295 kcal", typeColor: "blue", price: 2690 },
+            { id: "ka_szo", day: "Szombat", title: "Csirkemell csíkok pirított brokkolirizzsel", tag: "📉 KALÓRIASZEGÉNY", kcal: "315 kcal", typeColor: "blue", price: 2690 },
+            { id: "ka_va", day: "Vasárnap", title: "Sütőtök krémleves pirított tökmaggal (főétel)", tag: "📉 KALÓRIASZEGÉNY", kcal: "280 kcal", typeColor: "blue", price: 2690 }
+        ]
+    };
+
+    function switchMenuCategory(category) {
+        const buttons = document.querySelectorAll('.lb-filter-btn');
+        buttons.forEach(btn => {
+            if(btn.innerText.toLowerCase().includes(category) || (category === 'sima' && btn.innerText.includes('Sima'))) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        const container = document.getElementById('lbMenuGridContainer');
+        container.innerHTML = ""; 
+
+        if (category === 'sima') {
+            menuData.sima.forEach(item => {
+                const dayRow = document.createElement('div');
+                dayRow.className = "lb-day-row";
+                dayRow.innerHTML = `<div class="lb-day-title">${item.day}</div>`;
+
+                const cardsContainer = document.createElement('div');
+                cardsContainer.className = "lb-cards-container";
+
+                cardsContainer.innerHTML += `
+                    <div class="lb-food-card small-card">
+                        <div class="lb-tag-row"><div class="lb-meal-tag">SIMA 1</div></div>
+                        <div class="lb-meal-title">${item.title1}</div>
+                        <div class="lb-meal-stats"><span>🔥 ${item.kcal1}</span></div>
+                        <div class="lb-price-row">
+                            <span class="lb-price">${item.price} Ft</span>
+                            <div class="lb-action-inline-group">
+                                <select class="lb-location-select" id="loc_${item.id}_1">
+                                    <option value="Corvin Campus - Aula">Corvin Campus</option>
+                                    <option value="Gellért Campus">Gellért Campus</option>
+                                    <option value="Lovas Úti Irodák">Lovas Út</option>
+                                </select>
+                                <button class="lb-order-btn" id="btn_${item.id}_1" onclick="toggleCartItem('${item.id}_1', '${item.title1} (Sima 1)', ${item.price}, '${item.day}', 'loc_${item.id}_1')">Rendelés</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                cardsContainer.innerHTML += `
+                    <div class="lb-food-card small-card">
+                        <div class="lb-tag-row"><div class="lb-meal-tag" style="background:#e0f2fe; color:#0369a1;">SIMA 2</div></div>
+                        <div class="lb-meal-title">${fixSima2.title}</div>
+                        <div class="lb-meal-stats"><span>🔥 ${fixSima2.kcal}</span></div>
+                        <div class="lb-price-row">
+                            <span class="lb-price">${fixSima2.price} Ft</span>
+                            <div class="lb-action-inline-group">
+                                <select class="lb-location-select" id="loc_${item.id}_2">
+                                    <option value="Corvin Campus - Aula">Corvin Campus</option>
+                                    <option value="Gellért Campus">Gellért Campus</option>
+                                    <option value="Lovas Úti Irodák">Lovas Út</option>
+                                </select>
+                                <button class="lb-order-btn" id="btn_${item.id}_2" onclick="toggleCartItem('${item.id}_2', '${fixSima2.title} (Sima 2)', ${fixSima2.price}, '${item.day}', 'loc_${item.id}_2')">Rendelés</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                dayRow.appendChild(cardsContainer);
+                container.appendChild(dayRow);
+            });
+        } else {
+            menuData[category].forEach(item => {
+                const dayRow = document.createElement('div');
+                dayRow.className = "lb-day-row";
+                dayRow.innerHTML = `
+                    <div class="lb-day-title">${item.day}</div>
+                    <div class="lb-food-card">
+                        <div class="lb-tag-row"><div class="lb-meal-tag ${item.typeColor}">${item.tag}</div></div>
+                        <div class="lb-meal-title">${item.title}</div>
+                        <div class="lb-meal-stats"><span>🔥 ${item.kcal}</span></div>
+                        <div class="lb-price-row">
+                            <span class="lb-price">${item.price} Ft</span>
+                            <div class="lb-action-inline-group">
+                                <select class="lb-location-select" id="loc_${item.id}">
+                                    <option value="Corvin Campus - Aula">Corvin Campus</option>
+                                    <option value="Gellért Campus">Gellért Campus</option>
+                                    <option value="Lovas Úti Irodák">Lovas Út</option>
+                                </select>
+                                <button class="lb-order-btn" id="btn_${item.id}" onclick="toggleCartItem('${item.id}', '${item.title}', ${item.price}, '${item.day}', 'loc_${item.id}')">Rendelés</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(dayRow);
+            });
+        }
+        syncButtonStates();
+    }
+
+    // --- KOSÁR MODUL ---
+    function toggleCartItem(uid, title, price, day, selectId) {
+        const selectElem = document.getElementById(selectId);
+        const selectedLocation = selectElem ? selectElem.value : "Corvin Campus - Aula";
+        
+        const existingIndex = basket.findIndex(i => i.uid === uid);
+        const targetBtn = document.getElementById(`btn_${uid}`);
+
+        if (existingIndex > -1) {
+            basket.splice(existingIndex, 1);
+            if(targetBtn) {
+                targetBtn.classList.remove('active');
+                targetBtn.innerText = "Rendelés";
+            }
+        } else {
+            basket.push({ uid, title, price, day, location: selectedLocation });
+            if(targetBtn) {
+                targetBtn.classList.add('active');
+                targetBtn.innerText = "Kiszedés";
+            }
+        }
+        updateGlobalCartBadge();
+    }
+
+    function syncButtonStates() {
+        basket.forEach(item => {
+            const targetBtn = document.getElementById(`btn_${item.uid}`);
+            if (targetBtn) {
+                targetBtn.classList.add('active');
+                targetBtn.innerText = "Kiszedés";
+            }
+            const targetSelect = document.getElementById(`loc_${item.uid}`);
+            if (targetSelect) {
+                targetSelect.value = item.location;
+            }
+        });
+    }
+
+    function updateGlobalCartBadge() {
+        document.getElementById('lbGlobalCartCount').innerText = basket.length;
+    }
+
+    function openCartView() {
+        const container = document.getElementById('lbCartItemsContainer');
+        container.innerHTML = "";
+        let total = 0;
+
+        if(basket.length === 0) {
+            container.innerHTML = `<p style="text-align:center; margin-top:40px; color:var(--lb-text-muted); font-weight:600;">A kosarad még üres. Válassz ételt a menüből!</p>`;
+        } else {
+            basket.forEach(item => {
+                total += item.price;
+                container.innerHTML += `
+                    <div class="lb-cart-item-node">
+                        <div class="title">${item.title}</div>
+                        <div class="meta">Nap: ${item.day} | Átvétel: ${item.location}</div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+                            <span style="font-weight:800; font-size:14px;">${item.price} Ft</span>
+                            <span style="color:#e11d48; font-size:11px; font-weight:700; cursor:pointer;" onclick="removeItemFromCartDirectly('${item.uid}')">Törlés</span>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        document.getElementById('lbCartTotalSumText').innerText = total.toLocaleString() + " Ft";
+        document.getElementById('lbCartSidePanel').style.display = 'flex';
+    }
+
+    function removeItemFromCartDirectly(uid) {
+        basket = basket.filter(i => i.uid !== uid);
+        updateGlobalCartBadge();
+        openCartView(); 
+        
+        const targetBtn = document.getElementById(`btn_${uid}`);
+        if(targetBtn) {
+            targetBtn.classList.remove('active');
+            targetBtn.innerText = "Rendelés";
+        }
+    }
+
+    function closeCartView() {
+        document.getElementById('lbCartSidePanel').style.display = 'none';
+    }
+
+    function goToBetaCheckout() {
+        if(basket.length === 0) {
+            alert("Üres a kosarad!");
+            return;
+        }
+        let total = 0;
+        basket.forEach(i => total += i.price);
+        document.getElementById('lbBetaFinalAmountText').innerText = total.toLocaleString() + " Ft";
+        
+        document.getElementById('lbCartSidePanel').style.display = 'none';
+        document.getElementById('lbBetaCheckoutPanel').style.display = 'flex';
+    }
+
+    function backToCartFromBeta() {
+        document.getElementById('lbBetaCheckoutPanel').style.display = 'none';
+        document.getElementById('lbCartSidePanel').style.display = 'flex';
+    }
+
+    function executeBetaPaymentAndOrder() {
+        latestOrder = { ...basket[0] };
+        basket = [];
+        updateGlobalCartBadge();
+
+        document.getElementById('lbBetaCheckoutPanel').style.display = 'none';
+
+        lbMainHeader.style.display = 'block';
+        setLbTab(lbTabHome, lbHome, "Egészséges étel. Gyorsan, bármikor.");
+        lbScrollBody.scrollTop = 0;
+
+        if(latestOrder) {
+            document.getElementById('lbHomeLocationText').innerText = latestOrder.location;
+            document.getElementById('lbMainMealSectionTitle').innerText = "Legközelebbi Előrendelt Ételed (" + latestOrder.day + ")";
+            document.getElementById('lbHomeMealTitle').innerText = latestOrder.title;
+            document.getElementById('lbHomeMealPrice').innerText = latestOrder.price.toLocaleString() + " Ft";
+            document.getElementById('lbHomeCompartment').innerText = "Automata értesítést küld";
+        }
+    }
+
+    // --- AUTOMATA REKESZNYITÁS ---
+    const lbBtnAction = document.getElementById('lbBtnAction');
+    const lbOverlayView = document.getElementById('lbOverlayView');
+    const lbPopSpinner = document.getElementById('lbPopSpinner');
+    const lbPopFire = document.getElementById('lbPopFire');
+    const lbPopWaves = document.getElementById('lbPopWaves');
+    const lbPopSuccess = document.getElementById('lbPopSuccess');
+    const lbPopTitle = document.getElementById('lbPopTitle');
+    const lbPopText = document.getElementById('lbPopText');
+    const lbPopChoices = document.getElementById('lbPopChoices');
+    const lbHeatYes = document.getElementById('lbHeatYes');
+    const lbHeatNo = document.getElementById('lbHeatNo');
+    const lbPopClose = document.getElementById('lbPopClose');
+
+    lbBtnAction.addEventListener('click', () => {
+        lbOverlayView.style.display = 'flex';
+        lbPopSpinner.style.display = 'block';
+        lbPopFire.style.display = 'none';
+        lbPopWaves.style.display = 'none';
+        lbPopSuccess.style.display = 'none';
+        lbPopChoices.style.display = 'none';
+        lbPopClose.style.display = 'none';
+        
+        lbPopTitle.innerText = "Kapcsolódás...";
+        lbPopText.innerText = "Kommunikáció felépítése az automatával...";
+        
+        setTimeout(() => {
+            lbPopSpinner.style.display = 'none';
+            lbPopSuccess.style.display = 'block';
+            lbPopSuccess.innerText = "🔓";
+            lbPopTitle.innerText = "Rekesz sikeresen feloldva!";
+            lbPopText.innerText = "Vedd ki az ételed az automatából, majd zárd vissza a rekesz ajtaját.";
+            
+            setTimeout(() => {
+                lbPopSuccess.style.display = 'none';
+                lbPopFire.style.display = 'block';
+                lbPopChoices.style.display = 'flex';
+                
+                lbPopTitle.innerText = "Kérsz melegítést?";
+                lbPopTitle.style.color = "var(--lb-orange)";
+                lbPopText.innerText = "Tedd át a dobozt a megjelölt üres mikróba, és indítsd el innen az appból.";
+            }, 2500);
+
+        }, 1200);
+    });
+
+    lbHeatYes.addEventListener('click', () => {
+        lbPopFire.style.display = 'none';
+        lbPopChoices.style.display = 'none';
+        lbPopWaves.style.display = 'block';
+        
+        lbPopTitle.innerText = "Mikró kinyitása...";
+        lbPopText.innerText = "A mikró ajtaja automatikusan kinyílik. Helyezd be az ételt.";
+        
+        setTimeout(() => {
+            lbPopWaves.style.display = 'none';
+            lbPopSuccess.style.display = 'block';
+            lbPopSuccess.innerText = "🔥";
+            lbPopTitle.innerText = "Mikró programozva!";
+            lbPopText.innerText = "A mikró elindult. Az app automatikusan beállította az optimális időt és hőfokot.";
+            lbPopClose.style.display = 'block';
+        }, 2000);
+    });
+
+    lbHeatNo.addEventListener('click', () => { lbOverlayView.style.display = 'none'; });
+    lbPopClose.addEventListener('click', () => { lbOverlayView.style.display = 'none'; });
+</script>
+
+</body>
+</html>
